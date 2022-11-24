@@ -24,7 +24,12 @@ const run = async () => {
     const db = client.db('antique-watches');
     const usersCollection = db.collection('users');
     const productsCollection = db.collection('products');
+    const productCategoryCollection = db.collection('products-category');
 
+
+    /**
+     * usersCollection APIs
+     */
     app.get('/users', async (req, res) => {
       const role = req.query.role;
 
@@ -47,7 +52,9 @@ const run = async () => {
     });
 
 
-
+    /**
+     * productsCollection APIs
+     */
     app.get('/products', async (req, res) => {
       let query = {}
       const result = await productsCollection.find(query).toArray();
@@ -58,6 +65,24 @@ const run = async () => {
     app.post('/products', async (req, res) => {
       const data = req.body;
       const result = await productsCollection.insertOne(data);
+
+      res.send(result);
+    });
+
+
+    /**
+     * productCategoryCollection APIs
+     */
+    app.get('/category', async (req, res) => {
+      let query = {}
+      const result = await productCategoryCollection.find(query).toArray();
+
+      res.send(result);
+    });
+
+    app.post('/category', async (req, res) => {
+      const data = req.body;
+      const result = await productCategoryCollection.insertOne(data);
 
       res.send(result);
     });
