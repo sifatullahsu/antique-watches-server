@@ -69,20 +69,38 @@ const run = async () => {
       res.send(result);
     });
 
+    app.delete('/products', async (req, res) => {
+      const id = req.query.delete;
+
+      const query = { _id: ObjectId(id) }
+      const result = await productsCollection.deleteOne(query);
+
+      res.send(result);
+    });
+
 
     /**
      * productCategoryCollection APIs
      */
-    app.get('/category', async (req, res) => {
+    app.get('/categories', async (req, res) => {
       let query = {}
       const result = await productCategoryCollection.find(query).toArray();
 
       res.send(result);
     });
 
-    app.post('/category', async (req, res) => {
+    app.post('/categories', async (req, res) => {
       const data = req.body;
       const result = await productCategoryCollection.insertOne(data);
+
+      res.send(result);
+    });
+
+    app.delete('/categories', async (req, res) => {
+      const id = req.query.delete;
+
+      const query = { _id: ObjectId(id) }
+      const result = await productCategoryCollection.deleteOne(query);
 
       res.send(result);
     });
