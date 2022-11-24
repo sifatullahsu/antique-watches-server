@@ -25,7 +25,14 @@ const run = async () => {
     const usersCollection = db.collection('users');
 
     app.get('/users', async (req, res) => {
-      const query = {}
+      const role = req.query.role;
+
+      let query = {}
+
+      if (role) {
+        query = { role: role }
+      }
+
       const result = await usersCollection.find(query).toArray();
 
       res.send(result);
