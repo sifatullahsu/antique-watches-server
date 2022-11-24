@@ -23,6 +23,7 @@ const run = async () => {
   try {
     const db = client.db('antique-watches');
     const usersCollection = db.collection('users');
+    const productsCollection = db.collection('products');
 
     app.get('/users', async (req, res) => {
       const role = req.query.role;
@@ -36,7 +37,23 @@ const run = async () => {
       const result = await usersCollection.find(query).toArray();
 
       res.send(result);
-    })
+    });
+
+    app.post('/users', async (req, res) => {
+      const data = req.body;
+      const result = await usersCollection.insertOne(data);
+
+      res.send(result);
+    });
+
+
+
+    app.get('/products', async (req, res) => {
+      let query = {}
+      const result = await productsCollection.find(query).toArray();
+
+      res.send(result);
+    });
 
   }
   finally {
