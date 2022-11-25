@@ -31,15 +31,26 @@ const run = async () => {
      * usersCollection APIs
      */
     app.get('/users', async (req, res) => {
-      const role = req.query.role;
-
       let query = {}
-
-      if (role) {
-        query = { role: role }
-      }
-
       const result = await usersCollection.find(query).toArray();
+
+      res.send(result);
+    });
+
+    app.get('/users/role/:id', async (req, res) => {
+      const id = req.params.id;
+
+      const query = { role: id }
+      const result = await usersCollection.find(query).toArray();
+
+      res.send(result);
+    });
+
+    app.get('/users/uid/:id', async (req, res) => {
+      const id = req.params.id;
+
+      const query = { uid: id }
+      const result = await usersCollection.findOne(query);
 
       res.send(result);
     });
@@ -69,6 +80,29 @@ const run = async () => {
       res.send(result);
     });
 
+    app.get('/products/categories/:id', async (req, res) => {
+      const id = req.params.id;
+
+      const query = { category: id }
+      const products = await productsCollection.find(query).toArray();
+
+      const result = []
+
+      for (const product of products) {
+        const authorID = product.author;
+        const categoryID = product.category;
+
+        const author = await usersCollection.findOne({ _id: ObjectId(authorID) });
+        const category = await productCategoryCollection.findOne({ _id: ObjectId(categoryID) });
+
+        const newProduct = { ...product, categoryInfo: category, authorInfo: author }
+
+        result.push(newProduct);
+      }
+
+      res.send(result);
+    });
+
     app.delete('/products', async (req, res) => {
       const id = req.query.delete;
 
@@ -83,7 +117,7 @@ const run = async () => {
      * productCategoryCollection APIs
      */
     app.get('/categories', async (req, res) => {
-      let query = {}
+      const query = {}
       const result = await productCategoryCollection.find(query).toArray();
 
       res.send(result);
