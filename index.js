@@ -185,6 +185,13 @@ const run = async () => {
       res.send(result);
     });
 
+    app.post('/complaint', async (req, res) => {
+      const data = req.body;
+      const result = await productComplaintCollection.insertOne(data);
+
+      res.send(result);
+    });
+
   }
   finally {
 
