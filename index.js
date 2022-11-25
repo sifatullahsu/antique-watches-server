@@ -25,6 +25,7 @@ const run = async () => {
     const usersCollection = db.collection('users');
     const productsCollection = db.collection('products');
     const productCategoryCollection = db.collection('products-category');
+    const productComplaintCollection = db.collection('products-complaint');
 
 
     /**
@@ -62,6 +63,27 @@ const run = async () => {
       res.send(result);
     });
 
+    app.patch('/users', async (req, res) => {
+      const id = req.query.update;
+      const body = req.body;
+
+      const query = { _id: ObjectId(id) }
+      const updateDoc = {
+        $set: body
+      };
+      const result = await usersCollection.updateOne(query, updateDoc);
+
+      res.send(result);
+    });
+
+    app.delete('/users', async (req, res) => {
+      const id = req.query.delete;
+
+      const query = { _id: ObjectId(id) }
+      const result = await usersCollection.deleteOne(query);
+
+      res.send(result);
+    });
 
     /**
      * productsCollection APIs
@@ -103,6 +125,19 @@ const run = async () => {
       res.send(result);
     });
 
+    app.patch('/products', async (req, res) => {
+      const id = req.query.update;
+      const body = req.body;
+
+      const query = { _id: ObjectId(id) }
+      const updateDoc = {
+        $set: body
+      };
+      const result = await productsCollection.updateOne(query, updateDoc);
+
+      res.send(result);
+    });
+
     app.delete('/products', async (req, res) => {
       const id = req.query.delete;
 
@@ -135,6 +170,17 @@ const run = async () => {
 
       const query = { _id: ObjectId(id) }
       const result = await productCategoryCollection.deleteOne(query);
+
+      res.send(result);
+    });
+
+
+    /**
+     * productComplaintCollection APIs
+     */
+    app.get('/complaint', async (req, res) => {
+      const query = {}
+      const result = await productComplaintCollection.find(query).toArray();
 
       res.send(result);
     });
