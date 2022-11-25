@@ -26,6 +26,7 @@ const run = async () => {
     const productsCollection = db.collection('products');
     const productCategoryCollection = db.collection('products-category');
     const productComplaintCollection = db.collection('products-complaint');
+    const productOrderCollection = db.collection('products-order');
 
 
     /**
@@ -178,16 +179,58 @@ const run = async () => {
     /**
      * productComplaintCollection APIs
      */
-    app.get('/complaint', async (req, res) => {
+    app.get('/complaints', async (req, res) => {
       const query = {}
-      const result = await productComplaintCollection.find(query).toArray();
+      const complaints = await productComplaintCollection.find(query).toArray();
+
+      const result = []
+
+      for (const complaint of complaints) {
+        const userID = complaint.userID;
+        const productID = complaint.productID;
+
+        const user = await usersCollection.findOne({ _id: ObjectId(userID) });
+        const product = await productsCollection.findOne({ _id: ObjectId(productID) });
+
+        const newData = { ...complaint, userInfo: user, productInfo: product }
+
+        result.push(newData);
+      }
 
       res.send(result);
     });
 
-    app.post('/complaint', async (req, res) => {
+    app.post('/complaints', async (req, res) => {
       const data = req.body;
       const result = await productComplaintCollection.insertOne(data);
+
+      res.send(result);
+    });
+
+    app.delete('/complaints', async (req, res) => {
+      const id = req.query.delete;
+
+      const query = { _id: ObjectId(id) }
+      const result = await productComplaintCollection.deleteOne(query);
+
+      res.send(result);
+    });
+
+
+    /**
+     * productsOrderCollection APIs
+     */
+
+    app.get('/orders', async (req, res) => {
+      const query = {}
+      const result = await productOrderCollection.find(query).toArray();
+
+      res.send(result);
+    });
+
+    app.post('/orders', async (req, res) => {
+      const data = req.body;
+      const result = await productOrderCollection.insertOne(data);
 
       res.send(result);
     });
