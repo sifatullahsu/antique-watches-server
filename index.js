@@ -64,6 +64,24 @@ const run = async () => {
       res.send(result);
     });
 
+    app.post('/users/social', async (req, res) => {
+      const data = req.body;
+      const uid = data.uid;
+
+      const query = { uid: uid }
+      const isExist = await usersCollection.findOne(query);
+
+      if (!isExist) {
+        const result = await usersCollection.insertOne(data);
+        return res.send(result);
+      }
+      else {
+        return res.send({ acknowledged: true });
+      }
+
+      res.send({});
+    });
+
     app.patch('/users', async (req, res) => {
       const id = req.query.update;
       const body = req.body;
@@ -96,18 +114,30 @@ const run = async () => {
       res.send(result);
     });
 
-    app.post('/products', async (req, res) => {
-      const data = req.body;
-      const result = await productsCollection.insertOne(data);
+    app.get('/products/id/:id', async (req, res) => {
+      const id = req.params.id;
+
+      let query = { _id: ObjectId(id) }
+      const result = await productsCollection.findOne(query);
 
       res.send(result);
     });
 
-    app.get('/products/categories/:id', async (req, res) => {
-      const id = req.params.id;
+    app.get('/products/email/:email', async (req, res) => {
+      const email = req.params.email;
 
-      const query = { category: id }
-      const products = await productsCollection.find(query).toArray();
+      let query = { author: email }
+      const result = await productsCollection.find(query).toArray();
+
+      res.send(result);
+    });
+
+    app.get('/products/categories', async (req, res) => {
+      const id = req.query.catID;
+      const userID = req.query.userID;
+
+      const products = await productsCollection.find({ category: id }).toArray();
+
 
       const result = []
 
@@ -122,6 +152,14 @@ const run = async () => {
 
         result.push(newProduct);
       }
+
+
+      res.send(result);
+    });
+
+    app.post('/products', async (req, res) => {
+      const data = req.body;
+      const result = await productsCollection.insertOne(data);
 
       res.send(result);
     });
@@ -162,6 +200,28 @@ const run = async () => {
     app.post('/categories', async (req, res) => {
       const data = req.body;
       const result = await productCategoryCollection.insertOne(data);
+
+      res.send(result);
+    });
+
+    app.get('/categories/id/:id', async (req, res) => {
+      const id = req.params.id;
+
+      let query = { _id: ObjectId(id) }
+      const result = await productCategoryCollection.findOne(query);
+
+      res.send(result);
+    });
+
+    app.patch('/categories', async (req, res) => {
+      const id = req.query.update;
+      const body = req.body;
+
+      const query = { _id: ObjectId(id) }
+      const updateDoc = {
+        $set: body
+      };
+      const result = await productCategoryCollection.updateOne(query, updateDoc);
 
       res.send(result);
     });
@@ -228,9 +288,37 @@ const run = async () => {
       res.send(result);
     });
 
+    app.get('/orders/userid/:id', async (req, res) => {
+      const id = req.params.id;
+
+      let query = { userID: id }
+      const result = await productOrderCollection.find(query).toArray();
+
+      res.send(result);
+    });
+
+
+    app.get('/orders/get-ordered-projects-ids/:id', async (req, res) => {
+      const id = req.params.id;
+
+      let query = { userID: id }
+      const result = await productOrderCollection.find(query).project({ productID: 1, _id: 0 }).toArray();
+
+      res.send(result);
+    });
+
     app.post('/orders', async (req, res) => {
       const data = req.body;
       const result = await productOrderCollection.insertOne(data);
+
+      res.send(result);
+    });
+
+    app.delete('/orders', async (req, res) => {
+      const id = req.query.delete;
+
+      const query = { _id: ObjectId(id) }
+      const result = await productOrderCollection.deleteOne(query);
 
       res.send(result);
     });
