@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
+const stripe = require("stripe")(process.env.STRIPE_SK);
+const jwt = require('jsonwebtoken');
 
 const port = process.env.PORT || 5000;
 const app = express();
@@ -19,6 +21,28 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1
 });
 
+
+const verifyJWT = (req, res, next) => {
+  const authorization = req.headers.authorization;
+
+  if (!authorization) {
+    return res.status(401).send({ message: 'Unauthorize access' });
+  }
+
+  const token = authorization.split(' ')['1']
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decode) => {
+    if (err) {
+      return res.status(403).send({ message: 'Forbidden access' });
+    }
+
+    req.decode = decode;
+    next();
+  });
+}
+
+
+
 const run = async () => {
   try {
     const db = client.db('antique-watches');
@@ -29,18 +53,63 @@ const run = async () => {
     const productOrderCollection = db.collection('products-order');
 
 
+
+    app.post("/create-payment-intent", async (req, res) => {
+      const booking = req.body;
+      const price = booking.price;
+      const amount = price * 100;
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        currency: "usd",
+        amount: amount,
+        "payment_method_types": [
+          "card"
+        ]
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+
+
+    // Verify Admin
+    const verifyAdmin = async (req, res, next) => {
+      const email = req?.headers?.email;
+
+      const query = { email: email }
+      const user = await usersCollection.findOne(query);
+
+      if (user?.role !== 'admin') {
+        return res.status(403).send({ message: 'forbidden access' })
+      }
+
+      next();
+    }
+
+
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+
+      res.send({ token });
+    });
+
+
     /**
      * usersCollection APIs
      */
-    app.get('/users', async (req, res) => {
+    app.get('/users', verifyJWT, async (req, res) => {
       let query = {}
       const result = await usersCollection.find(query).toArray();
 
       res.send(result);
     });
 
-    app.get('/users/role/:id', async (req, res) => {
-      const id = req.params.id;
+    app.get('/users/role/:role', verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.role;
 
       const query = { role: id }
       const result = await usersCollection.find(query).toArray();
@@ -132,30 +201,81 @@ const run = async () => {
       res.send(result);
     });
 
+    const getProductInfo = async (product, userID) => {
+      const id = product._id;
+      const authorID = product.author;
+      const categoryID = product.category;
+
+
+      const author = await usersCollection.findOne({ _id: ObjectId(authorID) });
+      const category = await productCategoryCollection.findOne({ _id: ObjectId(categoryID) });
+
+      const query = {
+        $and: [
+          { productID: id.toString() }, { userID: userID }
+        ]
+      }
+      const currentUserOrdered = await productOrderCollection.findOne(query);
+
+
+      const result = {
+        ...product,
+        categoryInfo: category,
+        authorInfo: author,
+        currentUser: {
+          loggedIn: userID || 'undefined',
+          orderd: currentUserOrdered ? true : false,
+        }
+      }
+
+      return result;
+    }
+
     app.get('/products/categories', async (req, res) => {
       const id = req.query.catID;
       const userID = req.query.userID;
 
-      const products = await productsCollection.find({ category: id }).toArray();
+      const query = {
+        $and: [
+          { category: id }, { itemStatus: 'unsold' }
+        ]
+      }
 
+      const products = await productsCollection.find(query).toArray();
 
       const result = []
 
       for (const product of products) {
-        const authorID = product.author;
-        const categoryID = product.category;
-
-        const author = await usersCollection.findOne({ _id: ObjectId(authorID) });
-        const category = await productCategoryCollection.findOne({ _id: ObjectId(categoryID) });
-
-        const newProduct = { ...product, categoryInfo: category, authorInfo: author }
-
-        result.push(newProduct);
+        const getInfo = await getProductInfo(product, userID);
+        result.push(getInfo);
       }
-
 
       res.send(result);
     });
+
+
+
+    app.get('/products/advertise', async (req, res) => {
+      const userID = req.query.userID;
+
+      const query = {
+        $and: [
+          { advertise: "true" }, { itemStatus: "unsold" }
+        ]
+      }
+
+      const products = await productsCollection.find(query).toArray();
+
+      const result = []
+
+      for (const product of products) {
+        const getInfo = await getProductInfo(product, userID);
+        result.push(getInfo);
+      }
+
+      res.send(result);
+    });
+
 
     app.post('/products', async (req, res) => {
       const data = req.body;
@@ -288,11 +408,34 @@ const run = async () => {
       res.send(result);
     });
 
+    app.get('/orders/:id', async (req, res) => {
+      const id = req.params.id;
+
+      const query = { _id: ObjectId(id) }
+      const result = await productOrderCollection.findOne(query);
+
+      res.send(result);
+    });
+
     app.get('/orders/userid/:id', async (req, res) => {
       const id = req.params.id;
 
       let query = { userID: id }
-      const result = await productOrderCollection.find(query).toArray();
+      const orders = await productOrderCollection.find(query).toArray();
+
+      const result = []
+
+      for (const order of orders) {
+        const userID = order.userID;
+        const productID = order.productID;
+
+        const user = await usersCollection.findOne({ _id: ObjectId(userID) });
+        const product = await productsCollection.findOne({ _id: ObjectId(productID) });
+
+        const newData = { ...order, userInfo: user, productInfo: product }
+
+        result.push(newData);
+      }
 
       res.send(result);
     });
@@ -312,6 +455,33 @@ const run = async () => {
       const result = await productOrderCollection.insertOne(data);
 
       res.send(result);
+    });
+
+    app.patch('/orders/payment-confirm', async (req, res) => {
+      const orderID = req.query.orderID;
+      const productID = req.query.productID;
+      const data = req.body;
+
+
+      const updateDoc = {
+        $set: {
+          purchased: data
+        }
+      };
+      const order = await productOrderCollection.updateOne({ _id: ObjectId(orderID) }, updateDoc);
+
+      const productUpdateDoc = {
+        $set: {
+          itemStatus: 'sold',
+          advertise: 'false'
+        }
+      }
+      const product = await productsCollection.updateOne({ _id: ObjectId(productID) }, productUpdateDoc);
+
+      if (product && order) {
+        res.send(order);
+      }
+
     });
 
     app.delete('/orders', async (req, res) => {
