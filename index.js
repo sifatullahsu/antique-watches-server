@@ -206,30 +206,34 @@ const run = async () => {
       const categoryID = product.category;
 
 
-      const author = await usersCollection.findOne({ _id: ObjectId(authorID) });
-      const category = await productCategoryCollection.findOne({ _id: ObjectId(categoryID) });
+      const author = ObjectId.isValid(authorID) ? await usersCollection.findOne({ _id: ObjectId(authorID) }) : undefined;
+      const category = ObjectId.isValid(categoryID) ? await productCategoryCollection.findOne({ _id: ObjectId(categoryID) }) : undefined;
 
-      const query = {
-        $and: [
-          { productID: id.toString() }, { userID: userID }
-        ]
-      }
-      const currentUserOrdered = await productOrderCollection.findOne(query);
-
-
-      const result = {
-        ...product,
-        categoryInfo: category,
-        authorInfo: author,
-        currentUser: {
-          loggedIn: userID || 'undefined',
-          orderd: currentUserOrdered ? true : false,
+      if (author && category) {
+        const query = {
+          $and: [
+            { productID: id.toString() }, { userID: userID }
+          ]
         }
+        const currentUserOrdered = await productOrderCollection.findOne(query);
+
+        const result = {
+          ...product,
+          categoryInfo: category,
+          authorInfo: author,
+          currentUser: {
+            loggedIn: userID || 'undefined',
+            orderd: currentUserOrdered ? true : false,
+          }
+        }
+
+        return result;
       }
 
-      return result;
+      return undefined;
     }
 
+    // === Done
     app.get('/products/categories', verifyJWT, async (req, res) => {
       const id = req.query.catID;
       const userID = req.query.userID;
@@ -246,14 +250,17 @@ const run = async () => {
 
       for (const product of products) {
         const getInfo = await getProductInfo(product, userID);
-        result.push(getInfo);
+
+        if (getInfo) {
+          result.push(getInfo);
+        }
       }
 
       res.send(result);
     });
 
 
-    // public api
+    // public api === Done
     app.get('/products/advertise', async (req, res) => {
       const userID = req.query.userID;
 
@@ -269,7 +276,10 @@ const run = async () => {
 
       for (const product of products) {
         const getInfo = await getProductInfo(product, userID);
-        result.push(getInfo);
+
+        if (getInfo) {
+          result.push(getInfo);
+        }
       }
 
       res.send(result);
@@ -358,6 +368,7 @@ const run = async () => {
     /**
      * productComplaintCollection APIs
      */
+    // === Done
     app.get('/complaints', verifyJWT, verifyAdmin, async (req, res) => {
       const query = {}
       const complaints = await productComplaintCollection.find(query).toArray();
@@ -368,12 +379,14 @@ const run = async () => {
         const userID = complaint.userID;
         const productID = complaint.productID;
 
-        const user = await usersCollection.findOne({ _id: ObjectId(userID) });
-        const product = await productsCollection.findOne({ _id: ObjectId(productID) });
+        const user = ObjectId.isValid(userID) ? await usersCollection.findOne({ _id: ObjectId(userID) }) : undefined;
+        const product = ObjectId.isValid(productID) ? await productsCollection.findOne({ _id: ObjectId(productID) }) : undefined;
 
-        const newData = { ...complaint, userInfo: user, productInfo: product }
+        if (user && product) {
+          const newData = { ...complaint, userInfo: user, productInfo: product }
 
-        result.push(newData);
+          result.push(newData);
+        }
       }
 
       res.send(result);
@@ -407,15 +420,16 @@ const run = async () => {
       res.send(result);
     }); */
 
-    /* app.get('/orders/:id', async (req, res) => {
+    app.get('/orders/:id', verifyJWT, async (req, res) => {
       const id = req.params.id;
 
       const query = { _id: ObjectId(id) }
       const result = await productOrderCollection.findOne(query);
 
       res.send(result);
-    }); */
+    });
 
+    // === Done
     app.get('/orders/userid/:id', verifyJWT, async (req, res) => {
       const id = req.params.id;
 
@@ -431,9 +445,11 @@ const run = async () => {
         const user = await usersCollection.findOne({ _id: ObjectId(userID) });
         const product = await productsCollection.findOne({ _id: ObjectId(productID) });
 
-        const newData = { ...order, userInfo: user, productInfo: product }
+        if (user && product) {
+          const newData = { ...order, userInfo: user, productInfo: product }
 
-        result.push(newData);
+          result.push(newData);
+        }
       }
 
       res.send(result);
