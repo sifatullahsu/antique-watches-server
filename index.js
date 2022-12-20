@@ -162,6 +162,21 @@ const run = async () => {
       res.send(result);
     });
 
+    app.patch('/users/me', verifyJWT, async (req, res) => {
+      const id = req.query.id;
+      const body = req.body;
+
+      console.log(body);
+
+      const query = { _id: ObjectId(id) }
+      const updateDoc = {
+        $set: body
+      };
+      const result = await usersCollection.updateOne(query, updateDoc);
+
+      res.send(result);
+    });
+
     app.delete('/users', verifyJWT, verifyAdmin, async (req, res) => {
       const id = req.query.delete;
 
@@ -434,6 +449,37 @@ const run = async () => {
       const id = req.params.id;
 
       let query = { userID: id }
+      const orders = await productOrderCollection.find(query).toArray();
+
+      const result = []
+
+      for (const order of orders) {
+        const userID = order.userID;
+        const productID = order.productID;
+
+        const user = await usersCollection.findOne({ _id: ObjectId(userID) });
+        const product = await productsCollection.findOne({ _id: ObjectId(productID) });
+
+        if (user && product) {
+          const newData = { ...order, userInfo: user, productInfo: product }
+
+          result.push(newData);
+        }
+      }
+
+      res.send(result);
+    });
+
+    app.get('/orders/author/:id', verifyJWT, async (req, res) => {
+      const id = req.params.id;
+
+      let query = {
+        $and: [
+          { author: id },
+          // { purchased: { status: "true" } }
+        ]
+      }
+
       const orders = await productOrderCollection.find(query).toArray();
 
       const result = []
