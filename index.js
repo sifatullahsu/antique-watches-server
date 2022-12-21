@@ -166,8 +166,6 @@ const run = async () => {
       const id = req.query.id;
       const body = req.body;
 
-      console.log(body);
-
       const query = { _id: ObjectId(id) }
       const updateDoc = {
         $set: body
@@ -476,7 +474,7 @@ const run = async () => {
       let query = {
         $and: [
           { author: id },
-          // { purchased: { status: "true" } }
+          { "purchased.status": "true" }
         ]
       }
 
@@ -503,10 +501,10 @@ const run = async () => {
 
     /* app.get('/orders/get-ordered-projects-ids/:id', async (req, res) => {
       const id = req.params.id;
-
+  
       let query = { userID: id }
       const result = await productOrderCollection.find(query).project({ productID: 1, _id: 0 }).toArray();
-
+  
       res.send(result);
     }); */
 
