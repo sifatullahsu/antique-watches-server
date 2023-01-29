@@ -247,7 +247,7 @@ const run = async () => {
     }
 
     // === Done
-    app.get('/products/categories', verifyJWT, async (req, res) => {
+    app.get('/products/categories', async (req, res) => {
       const id = req.query.catID;
       const userID = req.query.userID;
 
@@ -298,6 +298,25 @@ const run = async () => {
       res.send(result);
     });
 
+    app.get('/shop/products', async (req, res) => {
+      const userID = req.query.userID;
+
+      const query = { itemStatus: "unsold" }
+
+      const products = await productsCollection.find(query).toArray();
+
+      const result = []
+
+      for (const product of products) {
+        const getInfo = await getProductInfo(product, userID);
+
+        if (getInfo) {
+          result.push(getInfo);
+        }
+      }
+
+      res.send(result);
+    });
 
     app.post('/products', verifyJWT, async (req, res) => {
       const data = req.body;
